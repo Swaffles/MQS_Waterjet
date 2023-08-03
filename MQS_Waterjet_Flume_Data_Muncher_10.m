@@ -13,7 +13,7 @@ clearvars -except homePath dataPath programPath
 close all
 clc
 
-debug = true;
+debug = false;
 
 try 
     addpath(programPath)
@@ -44,7 +44,8 @@ if ~isfile("WaterjetData.mat") || debug
     noData = true;
     existingData = [];
 else
-    load('WaterjetData.mat');
+    Data = load('WaterjetData.mat');
+    FFTData = load("FFTwaterjetData.mat");
     fprintf("Loading saved data from disc...\n");
     existingData = fieldnames(Data);
     noData = false; 
@@ -60,7 +61,7 @@ testMatrixFile = dir('Waterjet Test Matrix.xlsx');
 opts = spreadsheetImportOptions("NumVariables", 16);
 
 opts.Sheet = "Test Matrix";
-opts.DataRange = "A4:P73";
+opts.DataRange = "A4:P95";
 
 % Specify column names and types
 opts.VariableNames = ["TrialName", "WaterjetSpeed", "J", "WaterSpeed",...
@@ -97,9 +98,30 @@ if length(dataFiles)>length(existingData)
                temp = T.Properties.VariableNames;
                temp2 = strrep(temp,'_','-');
                T = renamevars(T,temp,temp2);
-               f1 = figure('Name',strcat(dataFileNames{ind},' Tmax Selection'));
+               f1 = figure('Name',strcat(dataFileNames{ind},' T Selection'),'units','normalized','OuterPosition',[0 0 1 1]);
                hold on
-               Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},debug);
+               % have the user choose where steady state data is.
+               vars = fieldnames(T);
+               vars = vars(2:end-3); %drop last three table intrinsic properties
+               vars(10) = []; %
+               sz = length(vars);
+               for j=1:sz
+                   plot(T.(vars{j}));
+               end
+               [t,~] = ginput(4);
+               start0 = round(t(1)); % user chooses zero data start
+               last0 = round(t(2));  % user chooses zero data end
+               start = round(t(3));  % user chooses steady state start
+               last = round(t(4));   % user chooses steady state end 
+               % if user picks a point outside of the table, usually the last data
+               % point, select the last data point as the last point
+               if last > size(T,1)
+                   last = size(T,1); % +1 because we deleted the first element in tempFFT
+               end
+               time = [start0,last0,start,last];
+               Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},time,debug);
+               FFTData.(fieldName{1}) = fftWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
+               Time.(fieldName{1}) = time;
                hold off
                close all
            else
@@ -117,13 +139,36 @@ if length(dataFiles)>length(existingData)
                temp = T.Properties.VariableNames;
                temp2 = strrep(temp,'_','-');
                T = renamevars(T,temp,temp2);
-               f1 = figure('Name',strcat(dataFileNames{ind},' Tmax Selection'));
+               f1 = figure('Name',strcat(dataFileNames{ind},' T Selection'),'units','normalized','OuterPosition',[0 0 1 1]);
                hold on
-               Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},debug);
+               % have the user choose where steady state data is.
+               vars = fieldnames(T);
+               vars = vars(2:end-3); %drop last three table intrinsic properties
+               vars(10) = []; %
+               sz = length(vars);
+               for j=1:sz
+                   plot(T.(vars{j}));
+               end
+               [t,~] = ginput(4);
+               start0 = round(t(1)); % user chooses zero data start
+               last0 = round(t(2));  % user chooses zero data end
+               start = round(t(3));  % user chooses steady state start
+               last = round(t(4));   % user chooses steady state end
+               % if user picks a point outside of the table, usually the last data
+               % point, select the last data point as the last point
+               if last > size(T,1)
+                   last = size(T,1); % +1 because we deleted the first element in tempFFT
+               end
+               time = [start0,last0,start,last];
+               Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},time,debug);
+               FFTData.(dataFileNames{ind}) = fftWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
+               Time.(dataFileNames{ind}) = time;
                hold off
                close all
            end
-           saveData(Data,homePath,dataPath);
+           saveData(Data,"WaterjetData.mat",homePath,dataPath);
+           saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
+           saveData(Time,"waterjetTimeData.mat",homePath,dataPath);
         else
             %if the file isn't already a part of T add it
             if ind>length(existingData)
@@ -136,9 +181,30 @@ if length(dataFiles)>length(existingData)
                    temp = T.Properties.VariableNames;
                    temp2 = strrep(temp,'_','-');
                    T = renamevars(T,temp,temp2);
-                   f2 = figure('Name',strcat(dataFileNames{ind},' Tmax Selection'));
+                   f2 = figure('Name',strcat(dataFileNames{ind},' T Selection'),'units','normalized','OuterPosition',[0 0 1 1]);
                    hold on
-                   Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},debug);
+                   % have the user choose where steady state data is.
+                   vars = fieldnames(T);
+                   vars = vars(2:end-3); %drop last three table intrinsic properties
+                   vars(10) = []; %
+                   sz = length(vars);
+                   for j=1:sz
+                       plot(T.(vars{j}));
+                   end
+                   [t,~] = ginput(4);
+                   start0 = round(t(1)); % user chooses zero data start
+                   last0 = round(t(2));  % user chooses zero data end
+                   start = round(t(3));  % user chooses steady state start
+                   last = round(t(4));   % user chooses steady state end
+                   % if user picks a point outside of the table, usually the last data
+                   % point, select the last data point as the last point
+                   if last > size(T,1)
+                       last = size(T,1); % +1 because we deleted the first element in tempFFT
+                   end
+                   time = [start0,last0,start,last];
+                   Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},time,debug);
+                   FFTData.(fieldName{1}) = fftWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
+                   Time.(fieldName{1}) = time;
                    hold off
                    close all
                else
@@ -156,13 +222,36 @@ if length(dataFiles)>length(existingData)
                    temp = T.Properties.VariableNames;
                    temp2 = strrep(temp,'_','-');
                    T = renamevars(T,temp,temp2);
-                   f2 = figure('Name',strcat(dataFileNames{ind},' Tmax Selection'));
+                   f2 = figure('Name',strcat(dataFileNames{ind},' T Selection'),'units','normalized','OuterPosition',[0 0 1 1]);
                    hold on
-                   Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},debug);
+                   % have the user choose where steady state data is.
+                   vars = fieldnames(T);
+                   vars = vars(2:end-3); %drop last three table intrinsic properties
+                   vars(10) = []; %
+                   sz = length(vars);
+                   for j=1:sz
+                       plot(T.(vars{j}));
+                   end
+                   [t,~] = ginput(4);
+                   start0 = round(t(1)); % user chooses zero data start
+                   last0 = round(t(2));  % user chooses zero data end
+                   start = round(t(3));  % user chooses steady state start
+                   last = round(t(4));   % user chooses steady state end
+                   % if user picks a point outside of the table, usually the last data
+                   % point, select the last data point as the last point
+                   if last > size(T,1)
+                       last = size(T,1); % +1 because we deleted the first element in tempFFT
+                   end
+                   time = [start0,last0,start,last];
+                   Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},time,debug);
+                   FFTData.(dataFileNames{ind}) = fftWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
+                   Time.(dataFileNames{ind}) = time;
                    hold off
                    close all
                end
-            saveData(Data,homePath,dataPath);
+            saveData(Data,"WaterjetData.mat",homePath,dataPath);
+            saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
+            saveData(Time,"waterjetTimeData.mat",homePath,dataPath);
             end
         end
         clear T
@@ -243,21 +332,35 @@ for ind = 1:length(fields)
 
     Data.(fields{ind}){17,:} = ["Ktr",KTr,sKTr,"--"];
 end
-saveData(Data,homePath,dataPath);
-clearvars -except Data vars homePath dataPath programPath savePath debug 
+FFTfields = fieldnames(FFTData);
+for ind = 1:length(FFTfields)
+    FFTData.(FFTfields{ind}){:,"J"} = Data.(fields{ind}).Mean(15);
+end
+saveData(Data,"WaterjetData.mat",homePath,dataPath);
+saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
+clearvars -except Data FFTData Time vars homePath dataPath programPath savePath debug 
 %% Graph Total Force and Rotor Force v. Shaft RPM Bollard Pull
 if debug
     close all
 end
-%cd(savePath);
+cd(homePath);
 waterjetForceFigureMaker(Data);
 hold off
-cd(programPath);
+
+%% FFT
+if debug
+    close all
+end
+cd(homePath);
+waterjetFFTPlot(FFTData);
+hold off
 %% SAVE Function
-function saveData(Data,homePath,dataPath)
+function saveData(Data,filenameString,homePath,dataPath)
     cd (homePath);
     %save in homePath
-    fprintf("Saving tables to WaterjetData.mat in %s\n",homePath);
-    save("WaterjetData.mat","Data",'-v7.3');
+    text = strcat("Saving tables to ",filenameString);
+    fprintf(text);
+    fprintf(" in %s\n", homePath);
+    save(filenameString,"Data",'-v7.3');
     cd (dataPath);
 end

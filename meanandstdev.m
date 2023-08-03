@@ -1,4 +1,4 @@
-function myTable = meanandstdev(dataTable,testMatrix,testMatrixVars,units,dataFileName,debug)
+function myTable = meanandstdev(dataTable,testMatrix,testMatrixVars,units,dataFileName,time,debug)
 % This function takes in a table containting raw data from a labview
 % testing log called dataTable, the corresponding testMatrix, the 
 % dataFileNames, as well as the option to set a debugger. The function
@@ -23,8 +23,11 @@ function myTable = meanandstdev(dataTable,testMatrix,testMatrixVars,units,dataFi
 % .             .           .
 
 
-
-
+    % parse time
+    start0 = time(1);
+    last0 = time(2);
+    start = time(3);
+    last = time(4);
      %locate the trial in the test matrix incase missaligned
     testMatrixIndex = find(strcmp(dataFileName,testMatrix.TrialName));
     if debug
@@ -43,23 +46,19 @@ function myTable = meanandstdev(dataTable,testMatrix,testMatrixVars,units,dataFi
     myTable = table('Size',[sz,4],'VariableTypes',varTypes,'VariableNames',varNames);
     myTable{:,end} = units;
   
-    % have the user choose where steady state data is.
-    for j=1:sz-length(testMatrixVars)
-        plot(dataTable.(vars{j}));
-    end
-    [t,~] = ginput(2);
-    start = round(t(1));
-    last = round(t(2));
     %body forces and moments
-    try
-        meanBodyForce = mean(dataTable{start:last,[vars(1:6)]},1,'omitnan');
+    meanForceNoJet = mean(dataTable{start0:last0,[vars(1:6)]},1,'omitnan');
+    
+    meanBodyForce = mean(dataTable{start:last,[vars(1:6)]},1,'omitnan')-meanForceNoJet;
 
-        stdBodyForce = std(dataTable{start:last,[vars(1:6)]},1,'omitnan');
-    catch
-        meanBodyForce = mean(dataTable{start:last,[vars(1:6)]},1,'omitnan');
+    stdForceNoJet = std(dataTable{start0:last0,[vars(1:6)]},1,'omitnan');
 
-        stdBodyForce = std(dataTable{start:last,[vars(1:6)]},1,'omitnan');
-    end
+    stdForce = std(dataTable{start:last,[vars(1:6)]},1,'omitnan');
+
+    % this standard deviation needs to be std(A-B) =
+    % sqrt(var(A)+var(B)-2*r(A,B)*SD(A)*SD(B))
+    stdBodyForce = stdForce+stdForceNoJet;%-sqrt(2.*corrcoef(stdForce,stdForceNoJet).*stdForceNoJet.*stdForce);
+
     myTable{1:6,"Quantity"} = vars(1:6);
     myTable{1:6,["Mean","STDDEV"]} =...
            [meanBodyForce',stdBodyForce'];
@@ -68,14 +67,14 @@ function myTable = meanandstdev(dataTable,testMatrix,testMatrixVars,units,dataFi
     meanWaterDepth = mean(dataTable.WaterDepth,'omitnan');
     stdWaterDepth = std(dataTable.WaterDepth,'omitnan');
     % Rotor Reaction Force
-    meanRotorThrust = mean(dataTable.RotorThrust,'omitnan');
-    stdRotorThrust = std(dataTable.RotorThrust,'omitnan');
+    meanRotorThrust = mean(dataTable.RotorThrust(start:last),'omitnan');
+    stdRotorThrust = std(dataTable.RotorThrust(start:last),'omitnan');
     % Steering Angle
-    meanSteeringAngle = mean(dataTable.("SteeringAngle-PulseCount"),'omitnan');
-    stdSteeringAngle = std(dataTable.("SteeringAngle-PulseCount"),'omitnan');
+    meanSteeringAngle = mean(dataTable.("SteeringAngle-PulseCount")(start:last),'omitnan');
+    stdSteeringAngle = std(dataTable.("SteeringAngle-PulseCount")(start:last),'omitnan');
     % Rotor Speed
-    meanRotorSpeed = mean(dataTable.("RotorSpeed-Frequency"),'omitnan');
-    stdRotorSpeed = std(dataTable.("RotorSpeed-Frequency"),'omitnan');
+    meanRotorSpeed = mean(dataTable.("RotorSpeed-Frequency")(start:last),'omitnan');
+    stdRotorSpeed = std(dataTable.("RotorSpeed-Frequency")(start:last),'omitnan');
 
     vars(7) = "Water Depth";
     vars(8) = "Rotor Thrust";
