@@ -1,4 +1,4 @@
-function waterjetFFTPlot(data)
+function waterjetPSDPlot(data)
 %Inputs:
 %data: data set containing all the necessary data for plotting
 

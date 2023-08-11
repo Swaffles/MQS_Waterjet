@@ -1,9 +1,9 @@
-function myFFT = fftWaterJet(dataTable,testMatrix,testMatrixVars,dataFileName,time,debug)
+function myPSD = psdWaterJet(dataTable,testMatrix,testMatrixVars,dataFileName,time,debug)
 % This function takes in a table containting raw data from a labview
 % testing log called dataTable, the corresponding testMatrix, the 
 % dataFileNames, as well as the option to set a debugger. The function
 % queries the user to select the bounds for valid data. The function then 
-% outputs a table called myFFT that contains the power and freq for Fx, Fy,
+% outputs a table called mypsd that contains the power and freq for Fx, Fy,
 % Fz, Mx, My, Mz, Rotor Thrust, Rotor Speed (rps), and Net Force.
 % E.g.
 % Input dataTable:
@@ -22,6 +22,8 @@ function myFFT = fftWaterJet(dataTable,testMatrix,testMatrixVars,dataFileName,ti
 
 
 maxfreq = 1000; % sampled at 2000 so 1/2
+windowSz = (60/64)*2000; % 60 sec of data at 2000/sec, want ~ windows
+nOverLap = 0.5*windowSz; % 10% overlap on window
 % parse time
 start0 = time(1);
 last0 = time(2);
@@ -50,13 +52,13 @@ last = time(4);
     varTypes = ["double","double","double","double","double","double",...
         "double","double","double","double","double","double"];
     cz = length(varNames);
-    % need to determine the min size for myFFT  
-    tempFFT = fft(dataTable.(vars{1})(start:last));
-    tempFFT(1) = [];
-    n = length(tempFFT);
-    tempFFT = abs(tempFFT(1:floor(n/2))).^2;
-    height = length(tempFFT);
-    myFFT = table('Size',[height,cz],'VariableTypes',varTypes,'VariableNames',varNames);
+    % need to determine the min size for mypsd  
+    tempPSD = pwelch(dataTable.(vars{1})(start:last),windowSz,nOverLap);
+    %tempPSD(1) = [];
+    n = length(tempPSD);
+    tempPSD = 10*log10(tempPSD);
+    height = length(tempPSD);
+    myPSD = table('Size',[height,cz],'VariableTypes',varTypes,'VariableNames',varNames);
   
     %body forces and moments
     % get mean of when no jet is on
@@ -69,39 +71,42 @@ last = time(4);
     TotalNetForce = sqrt(NetForce(:,1).^2+NetForce(:,2).^2+NetForce(:,3).^2);
     
     % compute FFTs
-    NetForceFFT = fft(NetForce);
-    NetForceFFT(1,:) =[]; % remove the first value (sum of the data)
-    n = length(NetForceFFT);
-    NetForceFFT_Power = abs(NetForceFFT(1:floor(n/2),:)).^2;
+    [NetForcePSD,Freq] = pwelch(NetForce,hamming(windowSz),nOverLap,[],2*maxfreq);
+    %NetForceFFT(1,:) =[]; % remove the first value (sum of the data)
+    n = length(NetForcePSD);
+    NetForce_Power = 10*log10(NetForcePSD);
     
     % frequency range
-    Freq = (1:n/2)/(n/2)*maxfreq;
+    %Freq = (1:n/2)/(n/2)*maxfreq;
 
     % total net force
-    TotalNetForceFFT = fft(TotalNetForce); %psd
-    TotalNetForceFFT(1) = [];
-    n = length(TotalNetForceFFT);
-    TotalNetForceFFT_Power = abs(TotalNetForceFFT(1:floor(n/2))).^2;
+    TotalNetForcePSD = pwelch(TotalNetForce,hamming(windowSz),nOverLap); %psd
+    %TotalNetForcePSD(1) = [];
+    n = length(TotalNetForcePSD);
+    TotalNetForceFFT_Power = 10*log10(TotalNetForcePSD);
 
     % Rotor Reaction Force
-    FFTRotorThrust = fft(dataTable.RotorThrust(start:last));
-    FFTRotorThrust(1) = [];
-    n = length(FFTRotorThrust);
-    RotorThrust_Power = abs(FFTRotorThrust(1:floor(n/2))).^2;
+    PSDRotorThrust = pwelch(dataTable.RotorThrust(start:last),hamming(windowSz),nOverLap);
+    %PSDRotorThrust(1) = [];
+    n = length(PSDRotorThrust);
+    RotorThrust_Power = 10*log10(PSDRotorThrust);
 
     % Rotor speed
-    FFTRotorSpeed = fft(dataTable.("RotorSpeed-Frequency")(start:last));
-    FFTRotorSpeed(1) =[];
-    n = length(FFTRotorSpeed);
-    RotorSpeed_Power = abs(FFTRotorSpeed(1:floor(n/2))).^2; 
+    PSDRotorSpeed = pwelch(dataTable.("RotorSpeed-Frequency")(start:last),hamming(windowSz),nOverLap);
+    %FFTRotorSpeed(1) =[];
+    n = length(PSDRotorSpeed);
+    %RotorSpeed_Power = abs(FFTRotorSpeed(1:floor(n/2))).^2; 
+    RotorSpeed_Power = 10*log10(PSDRotorSpeed);
     
-    myFFT{:,varNames(1:6)} = NetForceFFT_Power;
-    myFFT{:,"RotorThrust Power"} = RotorThrust_Power;
-    myFFT{:,"RotorSpeed-Frequency Power"} = RotorSpeed_Power;
-    myFFT{:,"Total Net Force Power"} = TotalNetForceFFT_Power;
-    myFFT{:,"Frequency"} = Freq';
-    myFFT{:,"WaterjetSpeed"} = testMatrix.(testMatrixVars{1})(testMatrixIndex)*ones(floor(n/2),1);
-    myFFT{:,"TrimAngle"} = testMatrix.(testMatrixVars{2})(testMatrixIndex)*ones(floor(n/2),1);
+    myPSD{:,varNames(1:6)} = NetForce_Power;
+    myPSD{:,"RotorThrust Power"} = RotorThrust_Power;
+    myPSD{:,"RotorSpeed-Frequency Power"} = RotorSpeed_Power;
+    myPSD{:,"Total Net Force Power"} = TotalNetForceFFT_Power;
+    myPSD{:,"Frequency"} = Freq;
+    myPSD{:,"WaterjetSpeed"} = testMatrix.(testMatrixVars{1})(testMatrixIndex)*ones(floor(n),1);
+    myPSD{:,"TrimAngle"} = testMatrix.(testMatrixVars{2})(testMatrixIndex)*ones(floor(n),1);
+
+    %semilogy(Freq,RotorThrust_Power);
   
     clear temp
     return

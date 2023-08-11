@@ -13,7 +13,7 @@ clearvars -except homePath dataPath programPath
 close all
 clc
 
-debug = false;
+debug = true;
 
 try 
     addpath(programPath)
@@ -43,9 +43,18 @@ if ~isfile("WaterjetData.mat") || debug
     %if running for first time or if debug is on
     noData = true;
     existingData = [];
+    try
+        load("waterjetTimeData.mat");
+        TimeData = Data;
+    catch
+        fprintf("No time data :(\n");
+    end
 else
-    Data = load('WaterjetData.mat');
-    FFTData = load("FFTwaterjetData.mat");
+    load("FFTwaterjetData.mat");
+    FFTData = Data;
+    load("waterjetTimeData.mat");
+    TimeData = Data;
+    load('WaterjetData.mat');
     fprintf("Loading saved data from disc...\n");
     existingData = fieldnames(Data);
     noData = false; 
@@ -105,10 +114,14 @@ if length(dataFiles)>length(existingData)
                vars = vars(2:end-3); %drop last three table intrinsic properties
                vars(10) = []; %
                sz = length(vars);
-               for j=1:sz
-                   plot(T.(vars{j}));
+               try
+                   t = TimeData.(fieldName{1});
+               catch
+                   for j=1:sz
+                       plot(T.(vars{j}));
+                   end
+                   [t,~] = ginput(4);
                end
-               [t,~] = ginput(4);
                start0 = round(t(1)); % user chooses zero data start
                last0 = round(t(2));  % user chooses zero data end
                start = round(t(3));  % user chooses steady state start
@@ -121,6 +134,7 @@ if length(dataFiles)>length(existingData)
                time = [start0,last0,start,last];
                Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},time,debug);
                FFTData.(fieldName{1}) = fftWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
+               PSDdata.(fieldName{1}) = psdWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
                Time.(fieldName{1}) = time;
                hold off
                close all
@@ -146,10 +160,14 @@ if length(dataFiles)>length(existingData)
                vars = vars(2:end-3); %drop last three table intrinsic properties
                vars(10) = []; %
                sz = length(vars);
-               for j=1:sz
-                   plot(T.(vars{j}));
+               try
+                   t = TimeData.(dataFileNames{ind});
+               catch
+                   for j=1:sz
+                       plot(T.(vars{j}));
+                   end
+                   [t,~] = ginput(4);
                end
-               [t,~] = ginput(4);
                start0 = round(t(1)); % user chooses zero data start
                last0 = round(t(2));  % user chooses zero data end
                start = round(t(3));  % user chooses steady state start
@@ -162,6 +180,7 @@ if length(dataFiles)>length(existingData)
                time = [start0,last0,start,last];
                Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},time,debug);
                FFTData.(dataFileNames{ind}) = fftWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
+               PSDdata.(dataFileNames{ind}) = psdWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
                Time.(dataFileNames{ind}) = time;
                hold off
                close all
@@ -188,10 +207,14 @@ if length(dataFiles)>length(existingData)
                    vars = vars(2:end-3); %drop last three table intrinsic properties
                    vars(10) = []; %
                    sz = length(vars);
-                   for j=1:sz
-                       plot(T.(vars{j}));
+                   try
+                       t = TimeData.(fieldName{1});
+                   catch
+                       for j=1:sz
+                           plot(T.(vars{j}));
+                       end
+                       [t,~] = ginput(4);
                    end
-                   [t,~] = ginput(4);
                    start0 = round(t(1)); % user chooses zero data start
                    last0 = round(t(2));  % user chooses zero data end
                    start = round(t(3));  % user chooses steady state start
@@ -204,6 +227,7 @@ if length(dataFiles)>length(existingData)
                    time = [start0,last0,start,last];
                    Data.(fieldName{1}) = meanandstdev(T,testMatrix,testMatrixVars,units,fieldName{1},time,debug);
                    FFTData.(fieldName{1}) = fftWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
+                   PSDdata.(fieldName{1}) = psdWaterJet(T,testMatrix,testMatrixVars,fieldName{1},time,debug);
                    Time.(fieldName{1}) = time;
                    hold off
                    close all
@@ -229,10 +253,14 @@ if length(dataFiles)>length(existingData)
                    vars = vars(2:end-3); %drop last three table intrinsic properties
                    vars(10) = []; %
                    sz = length(vars);
-                   for j=1:sz
-                       plot(T.(vars{j}));
+                   try
+                       t = TimeData.(dataFileNames{ind});
+                   catch
+                       for j=1:sz
+                           plot(T.(vars{j}));
+                       end
+                       [t,~] = ginput(4);
                    end
-                   [t,~] = ginput(4);
                    start0 = round(t(1)); % user chooses zero data start
                    last0 = round(t(2));  % user chooses zero data end
                    start = round(t(3));  % user chooses steady state start
@@ -245,6 +273,7 @@ if length(dataFiles)>length(existingData)
                    time = [start0,last0,start,last];
                    Data.(dataFileNames{ind}) = meanandstdev(T,testMatrix,testMatrixVars,units,dataFileNames{ind},time,debug);
                    FFTData.(dataFileNames{ind}) = fftWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
+                   PSDdata.(dataFileNames{ind}) = psdWaterJet(T,testMatrix,testMatrixVars,dataFileNames{ind},time,debug);
                    Time.(dataFileNames{ind}) = time;
                    hold off
                    close all
@@ -336,9 +365,14 @@ FFTfields = fieldnames(FFTData);
 for ind = 1:length(FFTfields)
     FFTData.(FFTfields{ind}){:,"J"} = Data.(fields{ind}).Mean(15);
 end
+PSDfields = fieldnames(PSDdata);
+for ind = 1:length(PSDfields)
+    PSDdata.(PSDfields{ind}){:,"J"} = Data.(fields{ind}).Mean(15);
+end
 saveData(Data,"WaterjetData.mat",homePath,dataPath);
 saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
-clearvars -except Data FFTData Time vars homePath dataPath programPath savePath debug 
+saveData(PSDdata,"PSDwaterjetData.mat",homePath,dataPath);
+clearvars -except Data FFTData PSDdata Time vars homePath dataPath programPath savePath debug 
 %% Graph Total Force and Rotor Force v. Shaft RPM Bollard Pull
 if debug
     close all
@@ -353,6 +387,14 @@ if debug
 end
 cd(homePath);
 waterjetFFTPlot(FFTData);
+hold off
+
+%% PSD
+if debug
+    close all
+end
+cd(homePath)
+waterjetPSDPlot(PSDdata);
 hold off
 %% SAVE Function
 function saveData(Data,filenameString,homePath,dataPath)
