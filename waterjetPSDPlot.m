@@ -88,22 +88,26 @@ yData = table('Size',tableSize,'VariableTypes',tableVarTypes,'VariableNames',tab
     myLineStyles = ["-","--",":","-."];
     % Outer loop to loop over each waterjet speed (motor counts)
     uniqueWaterJetSpeeds = unique(yData{:,"WaterjetSpeed"});
+    uniqueWaterJetSpeeds = sort(uniqueWaterJetSpeeds,'descend');
     numWaterJetSpeeds = length(uniqueWaterJetSpeeds);
+    for i = 1:numberVariables
+        % build figname string by concatinating ydata2plot strings
+        if i == 1
+            figString = yData2Plot(i);
+        else
+            figString = strcat(figString," and ",yData2Plot(i));
+        end
+    end
+    figname = strcat(figString," v. Frequency");
+    figure("Name",figname,'units','normalized','OuterPosition',[0 0 1 1]); %makes full screen size
+    tiledlayout(numWaterJetSpeeds,1);
     for a = 1:numWaterJetSpeeds
         % fft of each selected variable
         inda = yData{:,"WaterjetSpeed"} == uniqueWaterJetSpeeds(a);
         items = fields(inda);
-        for i = 1:numberVariables
-            % build figname string by concatinating ydata2plot strings
-            if i == 1
-                figString = yData2Plot(i);
-            else
-                figString = strcat(figString," and ",yData2Plot(i));
-            end
-        end
-        figname = strcat(figString," v. Frequency for motor duty cycle ",...
-            string(round((uniqueWaterJetSpeeds(a)/255)*100)),"%");
-        figure("Name",figname,'units','normalized','OuterPosition',[0 0 1 1]); %makes full screen size
+        nexttile;
+        tileTitle = strcat("Motor Duty Cycle ",...
+        string(round((uniqueWaterJetSpeeds(a)/255)*100)),"%");
         hold on
         for k = 1:numberVariables
             % select the data to plot
@@ -133,8 +137,8 @@ yData = table('Size',tableSize,'VariableTypes',tableVarTypes,'VariableNames',tab
         end
         ylabel("Power");
         xlabel("Hz");
-        title(figname);
-        legend;
+        title(tileTitle);
+        legend('Location','bestoutside');
         hold off
         grid off
     end

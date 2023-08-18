@@ -13,7 +13,7 @@ clearvars -except homePath dataPath programPath
 close all
 clc
 
-debug = true;
+debug = false;
 
 try 
     addpath(programPath)
@@ -185,9 +185,9 @@ if length(dataFiles)>length(existingData)
                hold off
                close all
            end
-           saveData(Data,"WaterjetData.mat",homePath,dataPath);
-           saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
-           saveData(Time,"waterjetTimeData.mat",homePath,dataPath);
+           % saveData(Data,"WaterjetData.mat",homePath,dataPath);
+           % saveData(FFTData,"FFTwaterjetData.mat",homePath,dataPath);
+           % saveData(Time,"waterjetTimeData.mat",homePath,dataPath);
         else
             %if the file isn't already a part of T add it
             if ind>length(existingData)
